@@ -2,7 +2,7 @@
 
 <img src="src/media/logo.png" alt="Movie Diary logo" width="500" />
 
-# Movie Diary
+# The Movie Calendar
 
 **A monthly calendar to log the films you watch, with the posters front and center.**
 
