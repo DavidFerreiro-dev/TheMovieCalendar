@@ -9,18 +9,18 @@ function Row({ movie, index, isCover, onOpen, onCover }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: movie.id })
   return (
     <li ref={setNodeRef} className={`row ${isDragging ? 'dragging' : ''}`} style={{ transform: CSS.Transform.toString(transform), transition }}>
-      <button className="handle" {...attributes} {...listeners} aria-label={`Mover ${movie.title}`}><GripVertical size={20} /></button>
+      <button className="handle" {...attributes} {...listeners} aria-label={`Move ${movie.title}`}><GripVertical size={20} /></button>
       <span className="pos">{index + 1}</span>
       <button className="row-main" onClick={() => onOpen(movie)}>
         <Poster path={movie.poster} title={movie.title} size="w185" />
         <span className="r-info">
           <strong>{movie.title}</strong>
-          <small>{movie.year || 'Sin fecha'}</small>
+          <small>{movie.year || 'No date'}</small>
         </span>
       </button>
-      <button className={`star ${isCover ? 'on' : ''}`} onClick={() => onCover(movie.id)} aria-pressed={isCover} title={isCover ? 'Portada del día' : 'Usar como portada'}>
+      <button className={`star ${isCover ? 'on' : ''}`} onClick={() => onCover(movie.id)} aria-pressed={isCover} title={isCover ? 'Day cover' : 'Set as cover'}>
         <Star size={18} fill={isCover ? 'currentColor' : 'none'} />
-        <span>{isCover ? 'Portada' : ''}</span>
+        <span>{isCover ? 'Cover' : ''}</span>
       </button>
     </li>
   )
@@ -33,7 +33,7 @@ export default function DayPanel({ date, day, dispatch, onAdd, onClose }) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
   const movies = day?.movies || []
-  const full = new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const full = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const current = detail && movies.find((m) => m.id === detail.id)
 
   const onEnd = ({ active, over }) => {
@@ -46,27 +46,27 @@ export default function DayPanel({ date, day, dispatch, onAdd, onClose }) {
 
   return (
     <div className="overlay sheet-wrap" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <aside className="sheet" role="dialog" aria-label="Detalle del día">
+      <aside className="sheet" role="dialog" aria-label="Day detail">
         {current ? (
           <div className="detail">
             <header className="modal-head">
-              <button className="btn ghost" onClick={() => setDetail(null)}><ArrowLeft size={18} /> Volver al día</button>
-              <button className="icon-btn" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
+              <button className="btn ghost" onClick={() => setDetail(null)}><ArrowLeft size={18} /> Back to day</button>
+              <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button>
             </header>
             <div className="detail-body">
               <Poster path={current.poster} title={current.title} size="w500" className="detail-poster" />
               <div className="detail-text">
                 <h2>{current.title}</h2>
                 <p className="muted">
-                  {current.original_title !== current.title && <>{current.original_title} · </>}{current.year || 'Sin fecha'}
-                  {current.rating && <> · ★ {current.rating} en TMDB</>}
+                  {current.original_title !== current.title && <>{current.original_title} · </>}{current.year || 'No date'}
+                  {current.rating && <> · ★ {current.rating} on TMDB</>}
                 </p>
-                <p className="synopsis">{current.overview || 'TMDB no tiene sinopsis en español para esta película.'}</p>
+                <p className="synopsis">{current.overview || 'TMDB has no synopsis in English for this movie.'}</p>
                 <div className="actions">
                   <button className={`btn ${day.cover === current.id ? 'accent' : ''}`} onClick={() => dispatch({ type: 'cover', date, id: current.id })}>
-                    <Star size={16} fill={day.cover === current.id ? 'currentColor' : 'none'} /> {day.cover === current.id ? 'Es la portada del día' : 'Usar como portada'}
+                    <Star size={16} fill={day.cover === current.id ? 'currentColor' : 'none'} /> {day.cover === current.id ? 'Day cover' : 'Set as cover'}
                   </button>
-                  <button className="btn danger" onClick={() => remove(current.id)}><Trash2 size={16} /> Eliminar de este día</button>
+                  <button className="btn danger" onClick={() => remove(current.id)}><Trash2 size={16} /> Remove from this day</button>
                 </div>
               </div>
             </div>
@@ -76,9 +76,9 @@ export default function DayPanel({ date, day, dispatch, onAdd, onClose }) {
             <header className="modal-head">
               <div>
                 <h2 className="cap">{full}</h2>
-                <p className="muted">{movies.length ? `${movies.length} ${movies.length === 1 ? 'película' : 'películas'}` : 'Nada registrado'}</p>
+                <p className="muted">{movies.length ? `${movies.length} ${movies.length === 1 ? 'movie' : 'movies'}` : 'Nothing logged'}</p>
               </div>
-              <button className="icon-btn" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
+              <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button>
             </header>
             {movies.length ? (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onEnd}>
@@ -91,9 +91,9 @@ export default function DayPanel({ date, day, dispatch, onAdd, onClose }) {
                 </SortableContext>
               </DndContext>
             ) : (
-              <p className="msg">Este día está en blanco. Añade lo que viste.</p>
+              <p className="msg">This day is empty. Add what you watched.</p>
             )}
-            <button className="btn accent wide" onClick={onAdd}><Plus size={18} /> Añadir película</button>
+            <button className="btn accent wide" onClick={onAdd}><Plus size={18} /> Add movie</button>
           </>
         )}
       </aside>

@@ -50,9 +50,9 @@ export const coverOf = (day) => day && (day.movies.find((m) => m.id === day.cove
 const pad = (n) => String(n).padStart(2, '0')
 export const keyOf = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`
 export const todayKey = () => { const t = new Date(); return keyOf(t.getFullYear(), t.getMonth(), t.getDate()) }
-export const monthName = (y, m) => new Date(y, m, 1).toLocaleDateString('es-ES', { month: 'long' })
+export const monthName = (y, m) => new Date(y, m, 1).toLocaleDateString('en-US', { month: 'long' })
 
-// Semanas de lunes a domingo; null = hueco fuera del mes
+// Weeks from Monday to Sunday; null = padding outside the month
 export function buildWeeks(y, m) {
   const lead = (new Date(y, m, 1).getDay() + 6) % 7
   const total = new Date(y, m + 1, 0).getDate()

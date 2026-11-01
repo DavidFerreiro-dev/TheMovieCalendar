@@ -2,11 +2,11 @@ import { img } from './tmdb'
 import { buildWeeks, coverOf, keyOf, monthName } from './store'
 
 const FONT = '"Bricolage Grotesque Variable", system-ui, sans-serif'
-const WEEK = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+const WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 export const FORMATS = {
-  horizontal: { w: 1920, h: 1080, label: 'Horizontal 16:9', hint: '1920 × 1080 · YouTube y pantallas' },
-  vertical: { w: 1080, h: 1920, label: 'Vertical 9:16', hint: '1080 × 1920 · Stories, Reels y TikTok' },
+  horizontal: { w: 1920, h: 1080, label: 'Horizontal 16:9', hint: '1920 × 1080 · YouTube & screens' },
+  vertical: { w: 1080, h: 1920, label: 'Vertical 9:16', hint: '1080 × 1920 · Stories, Reels & TikTok' },
 }
 
 const loadImg = (src) =>
@@ -48,7 +48,7 @@ export async function renderCalendar(state, year, month, format) {
 
   const prefix = keyOf(year, month, 1).slice(0, 8)
   const count = Object.keys(state.days).filter((k) => k.startsWith(prefix)).reduce((n, k) => n + state.days[k].movies.length, 0)
-  const countText = `${count} ${count === 1 ? 'película' : 'películas'} este mes`
+  const countText = `${count} ${count === 1 ? 'movie' : 'movies'} this month`
   const pad = landscape ? 70 : 60
   const gap = landscape ? 12 : 10
 
@@ -62,7 +62,15 @@ export async function renderCalendar(state, year, month, format) {
     c.fillText(countText, pad, pad + 30)
     c.fillStyle = '#e3a857'; c.font = `300 110px ${FONT}`
     c.fillText(String(year), pad, H - pad - 130)
-    c.fillStyle = '#efeae2'; c.font = `700 120px ${FONT}`
+    // Shrink month name font until it fits inside the left panel
+    const maxNameW = gx - pad * 2
+    let nameSz = 120
+    c.font = `700 ${nameSz}px ${FONT}`
+    while (c.measureText(monthName(year, month)).width > maxNameW && nameSz > 40) {
+      nameSz -= 4
+      c.font = `700 ${nameSz}px ${FONT}`
+    }
+    c.fillStyle = '#efeae2'
     c.fillText(monthName(year, month), pad, H - pad - 10)
   } else {
     c.fillStyle = '#efeae2'; c.font = `700 190px ${FONT}`
@@ -118,7 +126,7 @@ export async function downloadCalendar(state, year, month, format) {
   const blob = await new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.93))
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
-  a.download = `calendario-cinematografico-${monthName(year, month)}-${year}.jpg`.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  a.download = `movie-calendar-${monthName(year, month)}-${year}.jpg`.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   document.body.appendChild(a); a.click(); a.remove()
   setTimeout(() => URL.revokeObjectURL(a.href), 2000)
 }

@@ -55,6 +55,13 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .modal.small { width: min(460px, 100%); }
 .modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
 .modal-head h2 { font-size: 1.35rem; letter-spacing: -.01em; }
+/* Type tabs (Movies / Series) */
+.type-tabs { display: flex; gap: 6px; margin-bottom: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
+.type-tab { flex: 1; padding: 7px 0; border-radius: 7px; font-size: .9rem; font-weight: 600; color: var(--muted); transition: background .15s, color .15s; }
+.type-tab.active { background: var(--raised); color: var(--text); }
+.type-tab:not(.active):hover { color: var(--text); }
+.badge-tv { color: var(--accent); font-weight: 600; }
+
 .search-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .field { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; color: var(--muted); }
 .field.grow { flex: 1 1 220px; }

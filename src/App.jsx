@@ -32,11 +32,11 @@ export default function App() {
           <span className="year">{view.y}</span>
         </h1>
         <nav className="tools">
-          <button className="icon-btn" onClick={() => go(-1)} aria-label="Mes anterior"><ChevronLeft size={22} /></button>
-          <button className="btn" onClick={() => setView({ y: now.getFullYear(), m: now.getMonth() })} disabled={isCurrent}>Hoy</button>
-          <button className="icon-btn" onClick={() => go(1)} aria-label="Mes siguiente"><ChevronRight size={22} /></button>
-          <button className="btn" onClick={() => setExporting(true)}><Download size={17} /><span className="lbl">Exportar</span></button>
-          <button className="btn accent" onClick={() => setSearch(isCurrent ? todayKey() : `${view.y}-${String(view.m + 1).padStart(2, '0')}-01`)}><Plus size={18} /><span className="lbl">Añadir</span></button>
+          <button className="icon-btn" onClick={() => go(-1)} aria-label="Previous month"><ChevronLeft size={22} /></button>
+          <button className="btn" onClick={() => setView({ y: now.getFullYear(), m: now.getMonth() })} disabled={isCurrent}>Today</button>
+          <button className="icon-btn" onClick={() => go(1)} aria-label="Next month"><ChevronRight size={22} /></button>
+          <button className="btn" onClick={() => setExporting(true)}><Download size={17} /><span className="lbl">Export</span></button>
+          <button className="btn accent" onClick={() => setSearch(isCurrent ? todayKey() : `${view.y}-${String(view.m + 1).padStart(2, '0')}-01`)}><Plus size={18} /><span className="lbl">Add</span></button>
         </nav>
       </header>
 
