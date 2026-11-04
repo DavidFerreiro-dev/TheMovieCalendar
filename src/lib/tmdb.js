@@ -5,6 +5,15 @@ const API = 'https://api.themoviedb.org/3'
 export const hasToken = Boolean(TOKEN) && TOKEN !== 'TU_TOKEN_DE_TMDB'
 export const img = (path, size = 'w342') => (path ? `https://image.tmdb.org/t/p/${size}${path}` : null)
 
+export function extractTmdb(movie) {
+  if (!movie) return { tmdbId: null, type: 'movie' }
+  if (movie.tmdbId) return { tmdbId: movie.tmdbId, type: movie.type || 'movie' }
+  const idStr = String(movie.id || '')
+  if (idStr.startsWith('tv-')) return { tmdbId: idStr.slice(3), type: 'tv' }
+  if (idStr.startsWith('mv-')) return { tmdbId: idStr.slice(3), type: 'movie' }
+  return { tmdbId: idStr, type: movie.type || 'movie' }
+}
+
 async function tmdbSearch(endpoint, query, signal) {
   const url = `${API}${endpoint}?query=${encodeURIComponent(query)}&language=en-US&include_adult=false&page=1`
   const res = await fetch(url, { signal, headers: { Authorization: `Bearer ${TOKEN}`, accept: 'application/json' } })
@@ -24,6 +33,7 @@ export async function searchMovies(query, signal) {
     year: m.release_date ? m.release_date.slice(0, 4) : '',
     overview: m.overview || '',
     poster: m.poster_path,
+    default_poster: m.poster_path,
     rating: m.vote_average > 0 ? Math.round(m.vote_average * 10) / 10 : null,
   }))
 }
@@ -39,6 +49,23 @@ export async function searchSeries(query, signal) {
     year: m.first_air_date ? m.first_air_date.slice(0, 4) : '',
     overview: m.overview || '',
     poster: m.poster_path,
+    default_poster: m.poster_path,
     rating: m.vote_average > 0 ? Math.round(m.vote_average * 10) / 10 : null,
   }))
+}
+
+export async function fetchPosters(tmdbId, type = 'movie') {
+  if (!tmdbId) return []
+  const endpoint = type === 'tv' ? `/tv/${tmdbId}/images` : `/movie/${tmdbId}/images`
+  const url = `${API}${endpoint}`
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}`, accept: 'application/json' } })
+    if (!res.ok) return []
+    const data = await res.json()
+    const paths = (data.posters || []).map((p) => p.file_path).filter(Boolean)
+    // Return up to 36 unique posters
+    return Array.from(new Set(paths)).slice(0, 36)
+  } catch {
+    return []
+  }
 }

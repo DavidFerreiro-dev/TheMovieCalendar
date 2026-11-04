@@ -4,7 +4,7 @@ import { img } from '../lib/tmdb'
 export default function Poster({ path, title, size = 'w342', className = '' }) {
   const src = img(path, size)
   return src ? (
-    <img className={`poster ${className}`} src={src} alt={title} loading="lazy" draggable={false} />
+    <img className={`poster ${className}`} src={src} alt={title} loading="lazy" draggable={false} crossOrigin="anonymous" />
   ) : (
     <div className={`poster poster-empty ${className}`} role="img" aria-label={title}>
       <Film size={22} strokeWidth={1.5} />

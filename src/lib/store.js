@@ -31,6 +31,11 @@ function reducer(s, a) {
       return day ? { ...s, days: { ...s.days, [a.date]: { ...day, movies: a.movies } } } : s
     case 'cover':
       return day ? { ...s, days: { ...s.days, [a.date]: { ...day, cover: a.id } } } : s
+    case 'poster': {
+      if (!day) return s
+      const movies = day.movies.map((m) => m.id === a.id ? { ...m, poster: a.poster, default_poster: m.default_poster ?? m.poster } : m)
+      return { ...s, days: { ...s.days, [a.date]: { ...day, movies } } }
+    }
     case 'view':
       return { ...s, view: a.view }
     default:

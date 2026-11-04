@@ -9,14 +9,32 @@ export const FORMATS = {
   vertical: { w: 1080, h: 1920, label: 'Vertical 9:16', hint: '1080 × 1920 · Stories, Reels & TikTok' },
 }
 
-const loadImg = (src) =>
-  new Promise((res) => {
-    const i = new Image()
-    i.crossOrigin = 'anonymous'
-    i.onload = () => res(i)
-    i.onerror = () => res(null)
-    i.src = src
-  })
+async function loadImg(src) {
+  if (!src) return null
+  try {
+    const res = await fetch(src, { mode: 'cors' })
+    if (!res.ok) return null
+    const blob = await res.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    return await new Promise((resolve) => {
+      const i = new Image()
+      i.onload = () => resolve(i)
+      i.onerror = () => {
+        URL.revokeObjectURL(objectUrl)
+        resolve(null)
+      }
+      i.src = objectUrl
+    })
+  } catch {
+    return new Promise((resolve) => {
+      const i = new Image()
+      i.crossOrigin = 'anonymous'
+      i.onload = () => resolve(i)
+      i.onerror = () => resolve(null)
+      i.src = src
+    })
+  }
+}
 
 const rrect = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r) }
 
@@ -33,11 +51,28 @@ export async function renderCalendar(state, year, month, format) {
   await Promise.all([document.fonts.load(`700 80px ${FONT}`), document.fonts.load(`300 80px ${FONT}`)])
 
   const weeks = buildWeeks(year, month)
+  const lead = weeks[0].filter((d) => d === null).length
+  const out = (row, col) => new Date(year, month, row * 7 + col - lead + 1)
+
+  // Map all cells in the grid, including overflow dates from previous/next month
+  const allCells = weeks.flatMap((wk, row) =>
+    wk.map((d, col) => {
+      const date = d ? null : out(row, col)
+      const key = d ? keyOf(year, month, d) : keyOf(date.getFullYear(), date.getMonth(), date.getDate())
+      const dayNum = d || date.getDate()
+      const isOther = !d
+      return { row, col, key, dayNum, isOther }
+    })
+  )
+
   const covers = {}
+  const posterSize = landscape ? 'w500' : 'w342'
   await Promise.all(
-    weeks.flat().filter(Boolean).map(async (d) => {
-      const m = coverOf(state.days[keyOf(year, month, d)])
-      if (m?.poster) covers[d] = await loadImg(img(m.poster, 'w500'))
+    allCells.map(async (cell) => {
+      const m = coverOf(state.days[cell.key])
+      if (m?.poster) {
+        covers[cell.key] = await loadImg(img(m.poster, posterSize))
+      }
     })
   )
 
@@ -53,8 +88,11 @@ export async function renderCalendar(state, year, month, format) {
   const gap = landscape ? 12 : 10
 
   let gx, gy, gw, gh
-  if (landscape) { gx = 600; gy = pad; gw = W - gx - pad; gh = H - pad * 2 }
-  else { gx = pad; gy = 400; gw = W - pad * 2; gh = H - gy - pad }
+  if (landscape) {
+    gx = 600; gy = pad; gw = W - gx - pad; gh = H - pad * 2
+  } else {
+    gx = pad; gy = 330; gw = W - pad * 2; gh = H - gy - 80
+  }
 
   c.textAlign = 'left'
   if (landscape) {
@@ -73,60 +111,103 @@ export async function renderCalendar(state, year, month, format) {
     c.fillStyle = '#efeae2'
     c.fillText(monthName(year, month), pad, H - pad - 10)
   } else {
-    c.fillStyle = '#efeae2'; c.font = `700 190px ${FONT}`
-    c.fillText(monthName(year, month), pad - 6, 260)
-    c.fillStyle = '#e3a857'; c.font = `300 64px ${FONT}`
-    c.fillText(String(year), pad, 340)
-    c.fillStyle = '#8d8a84'; c.font = `400 30px ${FONT}`
-    c.fillText(countText, W - pad - c.measureText(countText).width, 340)
+    // Dynamic month name in vertical so it never clips on mobile
+    const maxNameW = W - pad * 2
+    let nameSz = 160
+    c.font = `700 ${nameSz}px ${FONT}`
+    while (c.measureText(monthName(year, month)).width > maxNameW && nameSz > 50) {
+      nameSz -= 4
+      c.font = `700 ${nameSz}px ${FONT}`
+    }
+    c.fillStyle = '#efeae2'
+    c.fillText(monthName(year, month), pad - 4, 210)
+
+    c.fillStyle = '#e3a857'; c.font = `300 58px ${FONT}`
+    c.fillText(String(year), pad, 280)
+    c.fillStyle = '#8d8a84'; c.font = `400 28px ${FONT}`
+    c.fillText(countText, W - pad - c.measureText(countText).width, 280)
   }
 
   const head = 44
   const cellW = (gw - gap * 6) / 7
-  const cellH = Math.min((gh - head - gap * (weeks.length - 1)) / weeks.length, cellW * 1.55)
+  // Cap cellH so the full grid fits
+  const maxCellH = (gh - head - gap * (weeks.length - 1)) / weeks.length
+  const cellH = Math.min(maxCellH, cellW * 1.55)
   const used = head + weeks.length * cellH + (weeks.length - 1) * gap
-  const oy = gy + (landscape ? (gh - used) / 2 : 0)
+  const oy = gy + Math.max(0, (gh - used) / 2)
 
   c.font = `600 24px ${FONT}`; c.fillStyle = '#6f6c67'; c.textAlign = 'center'
   WEEK.forEach((l, i) => c.fillText(l, gx + i * (cellW + gap) + cellW / 2, oy + 28))
 
   const r = 12
-  weeks.forEach((wk, row) =>
-    wk.forEach((d, col) => {
-      if (!d) return
-      const x = gx + col * (cellW + gap)
-      const y = oy + head + row * (cellH + gap)
-      const day = state.days[keyOf(year, month, d)]
-      const im = covers[d]
-      if (im) {
-        cover(c, im, x, y, cellW, cellH, r)
-        const g = c.createLinearGradient(0, y, 0, y + cellH * 0.4)
-        g.addColorStop(0, 'rgba(0,0,0,.7)'); g.addColorStop(1, 'rgba(0,0,0,0)')
-        c.save(); rrect(c, x, y, cellW, cellH, r); c.clip(); c.fillStyle = g; c.fillRect(x, y, cellW, cellH); c.restore()
-      } else {
-        c.fillStyle = day ? '#26262a' : '#151517'
-        rrect(c, x, y, cellW, cellH, r); c.fill()
-      }
-      c.textAlign = 'left'; c.font = `700 24px ${FONT}`
-      c.fillStyle = im ? '#ffffff' : day ? '#d8d4cc' : '#55524d'
-      c.fillText(String(d), x + 12, y + 32)
-      if (day && day.movies.length > 1) {
-        const bw = 44, bh = 30
-        c.fillStyle = '#e3a857'; rrect(c, x + cellW - bw - 8, y + cellH - bh - 8, bw, bh, 15); c.fill()
-        c.fillStyle = '#0d0d0e'; c.textAlign = 'center'; c.font = `700 19px ${FONT}`
-        c.fillText(`×${day.movies.length}`, x + cellW - bw / 2 - 8, y + cellH - 15)
-      }
-    })
-  )
+  allCells.forEach(({ row, col, key, dayNum, isOther }) => {
+    const x = gx + col * (cellW + gap)
+    const y = oy + head + row * (cellH + gap)
+    const day = state.days[key]
+    const im = covers[key]
+    if (im) {
+      cover(c, im, x, y, cellW, cellH, r)
+      const g = c.createLinearGradient(0, y, 0, y + cellH * 0.4)
+      g.addColorStop(0, 'rgba(0,0,0,.75)')
+      g.addColorStop(1, 'rgba(0,0,0,0)')
+      c.save()
+      rrect(c, x, y, cellW, cellH, r)
+      c.clip()
+      c.fillStyle = g
+      c.fillRect(x, y, cellW, cellH)
+      c.restore()
+    } else {
+      c.fillStyle = day ? '#26262a' : isOther ? '#111113' : '#17171a'
+      rrect(c, x, y, cellW, cellH, r)
+      c.fill()
+    }
+    c.textAlign = 'left'
+    c.font = `700 24px ${FONT}`
+    c.fillStyle = im ? '#ffffff' : day ? '#d8d4cc' : isOther ? '#44413c' : '#6f6c67'
+    c.fillText(String(dayNum), x + 12, y + 32)
+    if (day && day.movies.length > 1) {
+      const bw = 44, bh = 30
+      c.fillStyle = '#e3a857'
+      rrect(c, x + cellW - bw - 8, y + cellH - bh - 8, bw, bh, 15)
+      c.fill()
+      c.fillStyle = '#0d0d0e'
+      c.textAlign = 'center'
+      c.font = `700 19px ${FONT}`
+      c.fillText(`×${day.movies.length}`, x + cellW - bw / 2 - 8, y + cellH - 15)
+    }
+  })
+
   return cv
 }
 
 export async function downloadCalendar(state, year, month, format) {
   const cv = await renderCalendar(state, year, month, format)
-  const blob = await new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.93))
+  const blob = await new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.95))
+  const fileName = `movie-calendar-${monthName(year, month)}-${year}.jpg`.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+  // Web Share API for mobile devices (prompts direct save to Camera Roll or sharing to Instagram, WhatsApp, etc.)
+  if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+    try {
+      const file = new File([blob], fileName, { type: 'image/jpeg' })
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Movie Calendar - ${monthName(year, month)} ${year}`,
+        })
+        return
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') return
+    }
+  }
+
+  // Fallback anchor download
+  const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `movie-calendar-${monthName(year, month)}-${year}.jpg`.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  document.body.appendChild(a); a.click(); a.remove()
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000)
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
 }

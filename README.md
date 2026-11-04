@@ -248,13 +248,13 @@ If a poster can't be downloaded, that day is drawn as an empty tile instead of b
 
 | Problem | Likely cause and fix |
 | --- | --- |
-| "No hay conexión con TMDB" | No internet, or a network/blocker preventing access to `api.themoviedb.org`. |
+| "No connection to TMDB" | No internet, or a network/blocker preventing access to `api.themoviedb.org`. |
 | Posters missing in the export | Posters couldn't be downloaded (connection or blocker). They export as empty tiles; retry with a stable connection. |
 | `npm` not recognized on Windows | Node.js isn't installed, or the terminal needs a restart after installing it. |
 | `npm` blocked by script policy | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` or use `npm.cmd`. |
 | Very slow install inside OneDrive | OneDrive syncs `node_modules`. Move the project outside OneDrive. |
 
-> The app's interface and its error messages are in Spanish, as intended.
+> The app's interface and its error messages are in English.
 
 ## Future ideas
 
