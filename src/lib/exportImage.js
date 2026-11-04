@@ -9,31 +9,69 @@ export const FORMATS = {
   vertical: { w: 1080, h: 1920, label: 'Vertical 9:16', hint: '1080 × 1920 · Stories, Reels & TikTok' },
 }
 
-async function loadImg(src) {
-  if (!src) return null
-  try {
-    const res = await fetch(src, { mode: 'cors' })
-    if (!res.ok) return null
-    const blob = await res.blob()
-    const objectUrl = URL.createObjectURL(blob)
-    return await new Promise((resolve) => {
-      const i = new Image()
-      i.onload = () => resolve(i)
-      i.onerror = () => {
-        URL.revokeObjectURL(objectUrl)
+function loadImg(src) {
+  if (!src) return Promise.resolve(null)
+  return new Promise((resolve) => {
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    let finished = false
+
+    const timer = setTimeout(() => {
+      if (!finished) {
+        finished = true
         resolve(null)
       }
-      i.src = objectUrl
-    })
-  } catch {
-    return new Promise((resolve) => {
-      const i = new Image()
-      i.crossOrigin = 'anonymous'
-      i.onload = () => resolve(i)
-      i.onerror = () => resolve(null)
-      i.src = src
-    })
-  }
+    }, 10000)
+
+    image.onload = () => {
+      if (!finished) {
+        finished = true
+        clearTimeout(timer)
+        resolve(image)
+      }
+    }
+
+    image.onerror = () => {
+      // Fallback: fetch blob and convert to base64 Data URL to bypass browser cache & CORS taint on mobile WebKit
+      fetch(src)
+        .then((res) => {
+          if (!res.ok) throw new Error('Fetch failed')
+          return res.blob()
+        })
+        .then((blob) => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            if (finished) return
+            const fallback = new Image()
+            fallback.onload = () => {
+              if (!finished) {
+                finished = true
+                clearTimeout(timer)
+                resolve(fallback)
+              }
+            }
+            fallback.onerror = () => {
+              if (!finished) {
+                finished = true
+                clearTimeout(timer)
+                resolve(null)
+              }
+            }
+            fallback.src = reader.result
+          }
+          reader.readAsDataURL(blob)
+        })
+        .catch(() => {
+          if (!finished) {
+            finished = true
+            clearTimeout(timer)
+            resolve(null)
+          }
+        })
+    }
+
+    image.src = src
+  })
 }
 
 const rrect = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r) }
@@ -66,12 +104,16 @@ export async function renderCalendar(state, year, month, format) {
   )
 
   const covers = {}
-  const posterSize = landscape ? 'w500' : 'w342'
+  // Always use w500 for export: avoids cache collisions with on-screen w185/w342 posters
   await Promise.all(
     allCells.map(async (cell) => {
-      const m = coverOf(state.days[cell.key])
+      const day = state.days[cell.key]
+      const m = coverOf(day)
       if (m?.poster) {
-        covers[cell.key] = await loadImg(img(m.poster, posterSize))
+        const loaded = await loadImg(img(m.poster, 'w500'))
+        if (loaded) {
+          covers[cell.key] = loaded
+        }
       }
     })
   )
