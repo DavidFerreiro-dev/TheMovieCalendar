@@ -3,7 +3,11 @@ const TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN
 const API = 'https://api.themoviedb.org/3'
 
 export const hasToken = Boolean(TOKEN) && TOKEN !== 'TU_TOKEN_DE_TMDB'
-export const img = (path, size = 'w342') => (path ? `https://image.tmdb.org/t/p/${size}${path}` : null)
+export const img = (path, size = 'w342') => {
+  if (!path) return null
+  if (/^(https?:)?\/\//.test(path) || path.startsWith('data:')) return path
+  return `https://image.tmdb.org/t/p/${size}${path.startsWith('/') ? path : `/${path}`}`
+}
 
 async function tmdbSearch(endpoint, query, signal) {
   const url = `${API}${endpoint}?query=${encodeURIComponent(query)}&language=en-US&include_adult=false&page=1`
@@ -28,7 +32,7 @@ export async function searchMovies(query, signal) {
     original_title: m.original_title,
     year: m.release_date ? m.release_date.slice(0, 4) : '',
     overview: m.overview || '',
-    poster: m.poster_path,
+    poster: m.poster_path || m.backdrop_path,
     rating: m.vote_average > 0 ? Math.round(m.vote_average * 10) / 10 : null,
   }))
 }
@@ -43,7 +47,7 @@ export async function searchSeries(query, signal) {
     original_title: m.original_name,
     year: m.first_air_date ? m.first_air_date.slice(0, 4) : '',
     overview: m.overview || '',
-    poster: m.poster_path,
+    poster: m.poster_path || m.backdrop_path,
     rating: m.vote_average > 0 ? Math.round(m.vote_average * 10) / 10 : null,
   }))
 }
