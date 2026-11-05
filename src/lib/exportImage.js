@@ -83,6 +83,13 @@ function cover(c, im, x, y, w, h, r) {
   c.restore()
 }
 
+function contain(c, im, x, y, w, h, r) {
+  c.save(); rrect(c, x, y, w, h, r); c.clip()
+  const s = Math.min(w / im.width, h / im.height)
+  c.drawImage(im, x + (w - im.width * s) / 2, y + (h - im.height * s) / 2, im.width * s, im.height * s)
+  c.restore()
+}
+
 export async function renderCalendar(state, year, month, format) {
   const { w: W, h: H } = FORMATS[format]
   const landscape = format === 'horizontal'
@@ -238,6 +245,7 @@ export async function downloadCalendar(state, year, month, format) {
         })
         return
       }
+
     } catch (e) {
       if (e.name === 'AbortError') return
     }
@@ -251,5 +259,79 @@ export async function downloadCalendar(state, year, month, format) {
   document.body.appendChild(a)
   a.click()
   a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
+}
+
+export async function downloadMonth(state, year, month, aspect, format) {
+  if (!['vertical', 'horizontal'].includes(aspect)) throw new Error('Month exports support 9:16 or 16:9.')
+  if (!['png', 'jpg'].includes(format)) throw new Error('Choose JPG or PNG.')
+  const cv = await renderCalendar(state, year, month, aspect)
+  const mime = format === 'png' ? 'image/png' : 'image/jpeg'
+  const extension = format === 'png' ? 'png' : 'jpg'
+  const blob = await new Promise((resolve) => cv.toBlob(resolve, mime, .95))
+  const fileName = `movie-calendar-${monthName(year, month)}-${year}.${extension}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
+}
+
+export async function downloadDay(state, date, aspect, format) {
+  const day = state.days[date]
+  if (!day?.movies?.length) throw new Error('There are no movies logged for this day.')
+  if (!['square', 'vertical', 'horizontal'].includes(aspect)) throw new Error('Choose 1:1, 9:16, or 16:9.')
+  if (!['png', 'jpg'].includes(format)) throw new Error('Choose JPG or PNG.')
+  const dimensions = { square: [1200, 1200], vertical: [1080, 1920], horizontal: [1920, 1080] }
+  const [W, H] = dimensions[aspect]
+  const rowH = 190
+  const cv = document.createElement('canvas')
+  cv.width = W; cv.height = H
+  const c = cv.getContext('2d')
+  c.fillStyle = '#0d0d0e'; c.fillRect(0, 0, W, H)
+  const posters = await Promise.all(day.movies.map((movie) => loadImg(img(movie.poster, 'w342'))))
+  const primaryIndex = Math.max(0, day.movies.findIndex((movie) => movie.id === day.cover))
+  const primary = day.movies[primaryIndex]
+  const primaryPoster = posters[primaryIndex]
+  const headerY = aspect === 'horizontal' ? 80 : 105
+  c.textAlign = 'center'
+  c.fillStyle = '#e3a857'; c.font = `300 ${aspect === 'vertical' ? 38 : 32}px ${FONT}`; c.fillText('MY MOVIE DAY', W / 2, headerY)
+  c.fillStyle = '#efeae2'; c.font = `700 ${aspect === 'vertical' ? 46 : 40}px ${FONT}`; c.fillText(date, W / 2, headerY + 55)
+  const posterWidth = aspect === 'horizontal' ? Math.min(360, W * .24) : Math.min(470, W * .52)
+  const posterHeight = posterWidth * 1.5
+  const posterY = aspect === 'horizontal' ? 175 : 225
+  if (primaryPoster) {
+    c.save()
+    c.shadowColor = 'rgba(0, 0, 0, .65)'; c.shadowBlur = 34; c.shadowOffsetY = 16
+    contain(c, primaryPoster, (W - posterWidth) / 2, posterY, posterWidth, posterHeight, 18)
+    c.restore()
+  } else {
+    c.fillStyle = '#212125'; rrect(c, (W - posterWidth) / 2, posterY, posterWidth, posterHeight, 18); c.fill()
+  }
+  c.fillStyle = '#efeae2'; c.font = `700 ${aspect === 'horizontal' ? 38 : 42}px ${FONT}`
+  c.fillText(primary.title.slice(0, 36), W / 2, posterY + posterHeight + 62)
+  c.fillStyle = '#8d8a84'; c.font = `400 24px ${FONT}`
+  c.fillText(`${primary.year || 'Unknown year'}${primary.letterboxd?.rewatch?.toLowerCase() === 'yes' ? ' · Rewatch' : ''}`, W / 2, posterY + posterHeight + 98)
+  const secondary = day.movies.filter((_, index) => index !== primaryIndex)
+  if (secondary.length) {
+    const thumbSize = aspect === 'horizontal' ? 92 : 86
+    const gap = 14
+    const totalWidth = Math.min(W - 120, secondary.length * (thumbSize + gap) - gap)
+    const startX = (W - totalWidth) / 2
+    const thumbY = Math.min(H - thumbSize * 1.5 - 45, posterY + posterHeight + 140)
+    secondary.forEach((movie, index) => {
+      const x = startX + index * (thumbSize + gap)
+      if (posters[day.movies.indexOf(movie)]) contain(c, posters[day.movies.indexOf(movie)], x, thumbY, thumbSize, thumbSize * 1.5, 10)
+      c.fillStyle = '#8d8a84'; c.font = `400 16px ${FONT}`; c.fillText(movie.title.slice(0, 16), x + thumbSize / 2, thumbY + thumbSize * 1.5 + 23)
+    })
+  }
+  c.textAlign = 'left'
+  const mime = format === 'png' ? 'image/png' : 'image/jpeg'
+  const extension = format === 'png' ? 'png' : 'jpg'
+  const blob = await new Promise((resolve) => cv.toBlob(resolve, mime, .95))
+  if (!blob) throw new Error(`Could not create the ${format.toUpperCase()} image.`)
+  const fileName = `movie-day-${date}.${extension}`
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10000)
 }

@@ -13,6 +13,11 @@ async function tmdbSearch(endpoint, query, signal) {
   return res.json()
 }
 
+export async function findMovie(title, year) {
+  const data = await tmdbSearch('/search/movie', title)
+  return data.results.find((m) => year && m.release_date?.startsWith(String(year))) || data.results[0] || null
+}
+
 export async function searchMovies(query, signal) {
   const data = await tmdbSearch('/search/movie', query, signal)
   return data.results.map((m) => ({

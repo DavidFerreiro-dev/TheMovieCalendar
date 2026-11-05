@@ -61,6 +61,7 @@ export default function DayPanel({ date, day, dispatch, onAdd, onClose }) {
                   {current.original_title !== current.title && <>{current.original_title} · </>}{current.year || 'No date'}
                   {current.rating && <> · ★ {current.rating} on TMDB</>}
                 </p>
+                {current.letterboxd && <p className="muted">Watched date: {current.letterboxd.watchedDate || '—'} · Letterboxd rating: {current.letterboxd.letterboxdRating || '—'}{current.letterboxd.rewatch.toLowerCase() === 'yes' ? ' · Rewatch' : ''}</p>}
                 <p className="synopsis">{current.overview || 'TMDB has no synopsis in English for this title.'}</p>
                 <div className="actions">
                   <button className={`btn ${day.cover === current.id ? 'accent' : ''}`} onClick={() => dispatch({ type: 'cover', date, id: current.id })}>

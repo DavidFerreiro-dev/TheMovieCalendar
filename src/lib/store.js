@@ -16,7 +16,7 @@ function reducer(s, a) {
   switch (a.type) {
     case 'add': {
       const d = day || { movies: [], cover: null }
-      if (d.movies.some((m) => m.id === a.movie.id)) return s
+      if (!a.allowDuplicate && d.movies.some((m) => m.id === a.movie.id)) return s
       return { ...s, days: { ...s.days, [a.date]: { movies: [...d.movies, a.movie], cover: d.cover ?? a.movie.id } } }
     }
     case 'remove': {
